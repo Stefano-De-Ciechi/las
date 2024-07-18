@@ -7,6 +7,7 @@
 use std::time::Duration;
 use walkdir::{DirEntry, WalkDir};
 use clap::{App, Arg};
+use colored::{ColoredString, Colorize};
 
 const SECONDS_IN_DAY: f64 = 86_400.0;
 
@@ -27,14 +28,12 @@ fn main() {
     // TODO update to latest version of clap
     let args = App::new("las")
         .version("0.1")
-        .about("inspect entries in a path to check for creation, modification and last access dates; useful to decide if files are unused by a long time and can be removed from your system")
+        .about("LAS - Last Access Scanner\n inspect entries in a path to check for creation, modification and last access dates; useful to decide if files are unused by a long time and can be removed from your system")
 
         .arg(Arg::with_name("path")
             .help("root folder to begin scanning")
             .takes_value(true)
             .required(true)
-            .short("p")
-            .long("path")
         )
 
         .arg(Arg::with_name("max_depth")
@@ -71,15 +70,13 @@ fn main() {
         _ => true
     };
 
-    println!("skip_hidden: {}", skip_hidden);
-
     let walker = WalkDir::new(path)
         .max_depth(max_depth)
         .into_iter();
 
     println!(
-            "{0: <150} | {1: >15} | {2: >15} | {3: >15} |",
-            "file-name", "created", "last modified", "last access"
+            "\n{0: <150} | {1: >15} | {2: >15} | {3: >15} |",
+            "entry-name", "created", "last modified", "last access"
     );
 
     for _ in 0 ..= 205 {
@@ -115,7 +112,12 @@ fn main() {
         let last_access = metadata.accessed().unwrap();
         let last_access = duration_to_days( last_access.elapsed().unwrap() );
 
-        let name = format!("{} {}", "    ".repeat(entry.depth()), name);
+        let name = format!("{}{}", "    ".repeat(entry.depth()), name);
+        let mut name = ColoredString::from(name);
+
+        if metadata.is_dir() {
+            name = name.yellow();
+        }
 
         println!(
             "{: <150} | {: >15} | {: >15} | {: >15} |",

@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 clap = "2"
+colored = "2.1.0"
 walkdir = "2.5.0"
