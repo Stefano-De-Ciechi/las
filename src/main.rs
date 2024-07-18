@@ -1,11 +1,18 @@
+/*
+* author: Stefano De Ciechi
+* purpose: create a cli utility to scan directories and files and print metadata (like creation, modification and last_access dates) to help decide if an entry is worth eliminating or not
+* date: 2024-07-17
+*/
+
 use std::time::Duration;
 use walkdir::{DirEntry, WalkDir};
+use clap::{App, Arg};
 
 const SECONDS_IN_DAY: f64 = 86_400.0;
 
 // converts Duration to days by converting it to f64 and dividing by 86_400
 fn duration_to_days(duration: Duration) -> f64 {
-    (duration.as_secs_f64() / SECONDS_IN_DAY).round()
+    ( duration.as_secs_f64() / SECONDS_IN_DAY ).round()
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
@@ -16,29 +23,84 @@ fn is_hidden(entry: &DirEntry) -> bool {
 }
 
 fn main() {
-    let path = "/home/stefano/Pictures/";
 
-    let walker = WalkDir::new(path).into_iter();
+    // TODO update to latest version of clap
+    let args = App::new("las")
+        .version("0.1")
+        .about("inspect entries in a path to check for creation, modification and last access dates; useful to decide if files are unused by a long time and can be removed from your system")
+
+        .arg(Arg::with_name("path")
+            .help("root folder to begin scanning")
+            .takes_value(true)
+            .required(true)
+            .short("p")
+            .long("path")
+        )
+
+        .arg(Arg::with_name("max_depth")
+            .help("limit the recursion level of the scanning")
+            .takes_value(true)
+            .short("m")
+            .long("max_depth")
+            .default_value("1")
+        )
+
+        .arg(Arg::with_name("skip_hidden")
+            .help("skip hidden files and directories")
+            .takes_value(true)
+            .default_value("true")
+            .short("s")
+            .long("skip_hidden")
+            .possible_values(&["0", "1", "f", "t", "false", "true"])
+        )
+
+        .get_matches();
+
+    let path = args.value_of("path").unwrap();
+
+    // TODO check for correct parse result
+    let max_depth: usize = args.value_of("max_depth")
+        .to_owned()
+        .unwrap()
+        .parse()
+        .unwrap();
+
+    let skip_hidden = match args.value_of("skip_hidden").unwrap() {
+        "0" | "f" | "false" => false,
+        "1" | "t" | "true" => true,
+        _ => true
+    };
+
+    println!("skip_hidden: {}", skip_hidden);
+
+    let walker = WalkDir::new(path)
+        .max_depth(max_depth)
+        .into_iter();
 
     println!(
             "{0: <150} | {1: >15} | {2: >15} | {3: >15} |",
             "file-name", "created", "last modified", "last access"
     );
 
-    for _ in 0..=205 {
+    for _ in 0 ..= 205 {
         print!("-");
     }
 
     println!("");
 
-    //for entry in walker.filter_entry(|e| is_hidden(e)) {
-    for entry in walker.filter_map(|e| e.ok()) {
-    /*for entry in walker.filter_map(|e| {
-        duration_to_days(e.unwrap().metadata().unwrap().accessed()) > 30
-    }){*/
-        //let entry = entry.unwrap();
-        let name = entry.file_name().to_str().unwrap();
-        //let metadata = fs::metadata(entry.path()).unwrap();
+    let entries: Box<dyn Iterator<Item = walkdir::DirEntry>> = match skip_hidden {
+        false => Box::new(walker.filter_map(|e| e.ok())),
+
+        true => Box::new(walker
+            .filter_entry(|e| !is_hidden(e))
+            .filter_map(|e| e.ok())),
+    };
+
+    for entry in entries {
+        let name = entry.file_name()
+            .to_str()
+            .unwrap();
+
         let metadata = entry.metadata().unwrap();
         
         // Creation time
