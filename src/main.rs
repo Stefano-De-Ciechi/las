@@ -7,7 +7,10 @@
 use std::time::Duration;
 use walkdir::{DirEntry, WalkDir};
 use clap::{App, Arg};
-use colored::{ColoredString, Colorize};
+
+#[macro_use] extern crate prettytable;
+use prettytable::Table;
+use prettytable::format;
 
 const SECONDS_IN_DAY: f64 = 86_400.0;
 
@@ -74,16 +77,10 @@ fn main() {
         .max_depth(max_depth)
         .into_iter();
 
-    println!(
-            "\n{0: <150} | {1: >15} | {2: >15} | {3: >15} |",
-            "entry-name", "created", "last modified", "last access"
-    );
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
 
-    for _ in 0 ..= 205 {
-        print!("-");
-    }
-
-    println!("");
+    table.set_titles(row!["entry-name", "created", "last modified", "last access"]);
 
     let entries: Box<dyn Iterator<Item = walkdir::DirEntry>> = match skip_hidden {
         false => Box::new(walker.filter_map(|e| e.ok())),
@@ -113,19 +110,13 @@ fn main() {
         let last_access = duration_to_days( last_access.elapsed().unwrap() );
 
         let name = format!("{}{}", "    ".repeat(entry.depth()), name);
-        let mut name = ColoredString::from(name);
 
-        if metadata.is_dir() {
-            name = name.yellow();
-        }
-
-        println!(
-            "{: <150} | {: >15} | {: >15} | {: >15} |",
-            name,
-            created,
-            modified,
-            last_access
-        );
+        match metadata.is_dir() {
+            true => table.add_row(row![FY => name, created, modified, last_access]),
+            false => table.add_row(row![name, created, modified, last_access])
+        };
     }
+
+    table.printstd();
 }
 
