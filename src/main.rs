@@ -43,7 +43,6 @@ fn main() {
             .help("limit the recursion level of the scanning")
             .takes_value(true)
             .short("m")
-            .long("max_depth")
             .default_value("1")
         )
 
@@ -52,7 +51,6 @@ fn main() {
             .takes_value(true)
             .default_value("true")
             .short("s")
-            .long("skip_hidden")
             .possible_values(&["0", "1", "f", "t", "false", "true"])
         )
 
@@ -66,7 +64,6 @@ fn main() {
         }
     };
 
-    // TODO check for correct parse result
     let max_depth_str: &str = args.value_of("max_depth")
         .to_owned()
         .unwrap();
@@ -117,19 +114,40 @@ fn main() {
         
         // Creation time
         let created = match metadata.created() {
-            Ok(time) => duration_to_days(time.elapsed().unwrap()),
+            Ok(time) => {
+                let ct = match time.elapsed() {
+                    Ok(t) => t,
+                    Err(_) => Duration::new(0, 0),
+                };
+
+                duration_to_days(ct)
+            },
             Err(_) => -1.0,
         };
 
         // Last Modification time
         let modified = match metadata.modified() {
-            Ok(time) => duration_to_days(time.elapsed().unwrap()),
+            Ok(time) => {
+                let mt = match time.elapsed() {
+                    Ok(t) => t,
+                    Err(_) => Duration::new(0, 0),
+                };
+
+                duration_to_days(mt)
+            },
             Err(_) => -1.0,
         };
 
         // Last Access time
         let last_access = match metadata.accessed() {
-            Ok(time) => duration_to_days(time.elapsed().unwrap()),
+            Ok(time) => {
+                let las = match time.elapsed() {
+                    Ok(t) => t,
+                    Err(_) => Duration::new(0, 0),
+                };
+
+                duration_to_days(las)
+            },
             Err(_) => -1.0,
         };
 
