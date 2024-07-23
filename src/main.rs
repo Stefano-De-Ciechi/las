@@ -4,6 +4,7 @@
 * date: 2024-07-17
 */
 
+use std::process::exit;
 use std::time::Duration;
 use walkdir::{DirEntry, WalkDir};
 use clap::{App, Arg};
@@ -28,7 +29,6 @@ fn is_hidden(entry: &DirEntry) -> bool {
 
 fn main() {
 
-    // TODO update to latest version of clap
     let args = App::new("las")
         .version("0.1")
         .about("LAS - Last Access Scanner\n inspect entries in a path to check for creation, modification and last access dates; useful to decide if files are unused by a long time and can be removed from your system")
@@ -58,14 +58,26 @@ fn main() {
 
         .get_matches();
 
-    let path = args.value_of("path").unwrap();
+    let path = match args.value_of("path") {
+        Some(p) => p,
+        None => {
+            eprintln!("error with the specified path");
+            exit(-1);
+        }
+    };
 
     // TODO check for correct parse result
-    let max_depth: usize = args.value_of("max_depth")
+    let max_depth_str: &str = args.value_of("max_depth")
         .to_owned()
-        .unwrap()
-        .parse()
         .unwrap();
+
+    let max_depth: usize = match max_depth_str.parse() {
+        Ok(n) => n,
+        Err(_) => {
+            eprintln!("can't parse max_depth into a valid unsigned int");
+            exit(-1);
+        }
+    };
 
     let skip_hidden = match args.value_of("skip_hidden").unwrap() {
         "0" | "f" | "false" => false,
@@ -95,19 +107,31 @@ fn main() {
             .to_str()
             .unwrap();
 
-        let metadata = entry.metadata().unwrap();
+        let metadata = match entry.metadata() {
+            Ok(m) => m,
+            Err(_) => {
+                eprintln!("can't retrieve metadata for the file {}", name);
+                exit(-1);
+            }
+        };
         
         // Creation time
-        let created = metadata.created().unwrap();
-        let created = duration_to_days( created.elapsed().unwrap() );
-        
+        let created = match metadata.created() {
+            Ok(time) => duration_to_days(time.elapsed().unwrap()),
+            Err(_) => -1.0,
+        };
+
         // Last Modification time
-        let modified = metadata.modified().unwrap();
-        let modified = duration_to_days( modified.elapsed().unwrap() );
+        let modified = match metadata.modified() {
+            Ok(time) => duration_to_days(time.elapsed().unwrap()),
+            Err(_) => -1.0,
+        };
 
         // Last Access time
-        let last_access = metadata.accessed().unwrap();
-        let last_access = duration_to_days( last_access.elapsed().unwrap() );
+        let last_access = match metadata.accessed() {
+            Ok(time) => duration_to_days(time.elapsed().unwrap()),
+            Err(_) => -1.0,
+        };
 
         let name = format!("{}{}", "    ".repeat(entry.depth()), name);
 
