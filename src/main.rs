@@ -21,10 +21,22 @@ fn duration_to_days(duration: Duration) -> f64 {
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
-    entry.file_name()
-         .to_str()
-         .map(|s| s.starts_with("."))
-         .unwrap_or(false)
+
+    let name = entry.file_name()
+        .to_str()
+        .unwrap_or_default();
+
+    if name.starts_with("./") || name.starts_with("../") {
+        return false;
+    }
+
+    else if name.starts_with(".") {
+        return true;
+    }
+
+    else {
+        return false;
+    }
 }
 
 fn main() {
